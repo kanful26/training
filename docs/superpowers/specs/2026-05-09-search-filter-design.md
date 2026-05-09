@@ -75,6 +75,22 @@ private function _build_search_where()
 2. `$this->db->get_count("information")` → `$this->db->get_count("information", $where)` に変更
 3. `select(...)` の第3引数（WHERE）を `""` → `$where` に変更
 
+### ページネーションへの検索条件引き継ぎ（`info_list_func` のみ）
+
+`make_navigation` に渡す `$option` に検索パラメータを追加する。
+これをしないと2ページ目クリック時にURLから検索条件が消え、全件表示に戻ってしまう。
+
+```php
+$option = array(
+    "sort"             => $this->parameters['sort'],
+    "search_text"      => isset($this->parameters['search_text']) ? $this->parameters['search_text'] : '',
+    "search_date_from" => isset($this->parameters['search_date_from']) ? $this->parameters['search_date_from'] : '',
+    "search_date_to"   => isset($this->parameters['search_date_to']) ? $this->parameters['search_date_to'] : '',
+);
+```
+
+`json_get_info_data_func` はページネーションリンクを生成しないため対象外。
+
 ---
 
 ## 制約事項
