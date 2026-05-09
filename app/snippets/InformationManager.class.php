@@ -94,7 +94,8 @@ class InformationManager extends CommonKanful
 		);
 		$info_data_list = array();
 
-		$total_count = $this->db->get_count("information");
+		$where = $this->_build_search_where();
+		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
 			$this->disp_info_list_by_page = $this->parameters['limit'];
@@ -130,7 +131,7 @@ class InformationManager extends CommonKanful
 						information.upd_timestamp,
 						information.upd_seq
 					",
-					"",
+					$where,
 					"
 						info_date DESC,
 						upd_timestamp DESC,
