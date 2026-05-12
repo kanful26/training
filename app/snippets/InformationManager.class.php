@@ -54,6 +54,31 @@ class InformationManager extends CommonKanful
 	}
 
 	/**
+	 * 検索条件からWHERE句文字列を生成する
+	 */
+	private function _build_info_search_where()
+	{
+		$conditions = array();
+
+		if (!empty($this->parameters['search_text'])) {
+			$kw = pg_escape_string($this->parameters['search_text']);
+			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%')";
+		}
+
+		if (!empty($this->parameters['search_date_from'])) {
+			$from = pg_escape_string($this->parameters['search_date_from']);
+			$conditions[] = "info_date >= '" . $from . "'";
+		}
+
+		if (!empty($this->parameters['search_date_to'])) {
+			$to = pg_escape_string($this->parameters['search_date_to']);
+			$conditions[] = "info_date < '" . $to . "'::date + interval '1 day'";
+		}
+
+		return implode(' AND ', $conditions);
+	}
+
+	/**
 	 * JSON形式で社内お知らせデータを取得
 	 */
 	private function json_get_info_data_func()
@@ -68,7 +93,8 @@ class InformationManager extends CommonKanful
 		);
 		$info_data_list = array();
 
-		$total_count = $this->db->get_count("information");
+		$where = $this->_build_info_search_where();
+		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
 			$this->disp_info_list_by_page = $this->parameters['limit'];
@@ -104,7 +130,7 @@ class InformationManager extends CommonKanful
 						information.upd_timestamp,
 						information.upd_seq
 					",
-					"",
+					$where,
 					"
 						info_date DESC,
 						upd_timestamp DESC,
@@ -144,7 +170,7 @@ class InformationManager extends CommonKanful
 				return;
 			}
 		} else {
-			$result['message'] = "データがありませんでした。";
+			$result['message'] = "該当するお知らせはありませんでした。";
 		}
 
 		foreach ($info_data_list as $key => $data) {
@@ -182,7 +208,8 @@ class InformationManager extends CommonKanful
 	{
 		$info_data_list = array();
 
-		$total_count = $this->db->get_count("information");
+		$where = $this->_build_info_search_where();
+		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
 			$this->disp_info_list_by_page = $this->parameters['limit'];
@@ -193,7 +220,10 @@ class InformationManager extends CommonKanful
 		if ($total_count > 0) {
 			// ページナビゲーションを作成
 			$option = array(
-				"sort" => $this->parameters['sort']
+				"sort"             => $this->parameters['sort'],
+				"search_text"      => isset($this->parameters['search_text']) ? $this->parameters['search_text'] : '',
+				"search_date_from" => isset($this->parameters['search_date_from']) ? $this->parameters['search_date_from'] : '',
+				"search_date_to"   => isset($this->parameters['search_date_to']) ? $this->parameters['search_date_to'] : ''
 			);
 			$navi_data = $this->make_navigation(
 				$total_count,
@@ -224,7 +254,7 @@ class InformationManager extends CommonKanful
 						information.upd_timestamp,
 						information.upd_seq
 					",
-					"",
+					$where,
 					"
 						info_date DESC,
 						upd_timestamp DESC,
@@ -259,6 +289,8 @@ class InformationManager extends CommonKanful
 					}
 				}
 			}
+		} else {
+			$this->set_message_text('', '該当するお知らせはありませんでした。');
 		}
 
 		// テンプレートから出力内容を生成
