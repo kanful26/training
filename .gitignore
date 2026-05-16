@@ -20,5 +20,8 @@ Thumbs.db
 vendor/
 composer.lock
 
+# Test scripts (not for web serving)
+app/test_search.php
+
 # Docker volumes (DB data)
 db/data/
