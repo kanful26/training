@@ -62,17 +62,24 @@ class InformationManager extends CommonKanful
 
 		if (!empty($this->parameters['search_text'])) {
 			$kw = pg_escape_string($this->parameters['search_text']);
-			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%')";
+			// ILIKE のワイルドカード(% _)を '!' でエスケープ。バックスラッシュ回避のため '!' を ESCAPE 文字に採用
+			$kw = str_replace(array('!', '%', '_'), array('!!', '!%', '!_'), $kw);
+			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%' ESCAPE '!')";
 		}
 
 		if (!empty($this->parameters['search_date_from'])) {
-			$from = pg_escape_string($this->parameters['search_date_from']);
-			$conditions[] = "info_date >= '" . $from . "'";
+			$from = $this->parameters['search_date_from'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+				$conditions[] = "info_date >= '" . pg_escape_string($from) . "'";
+			}
 		}
 
 		if (!empty($this->parameters['search_date_to'])) {
-			$to = pg_escape_string($this->parameters['search_date_to']);
-			$conditions[] = "info_date < '" . $to . "'::date + interval '1 day'";
+			$to = $this->parameters['search_date_to'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+				// info_date は TIMESTAMP 型のため <= '$to' だと当日分が漏れる。翌日未満で当日終端まで含める
+				$conditions[] = "info_date < '" . pg_escape_string($to) . "'::date + interval '1 day'";
+			}
 		}
 
 		return implode(' AND ', $conditions);
@@ -220,7 +227,7 @@ class InformationManager extends CommonKanful
 		if ($total_count > 0) {
 			// ページナビゲーションを作成
 			$option = array(
-				"sort"             => $this->parameters['sort'],
+				"sort"             => isset($this->parameters['sort']) ? $this->parameters['sort'] : '',
 				"search_text"      => isset($this->parameters['search_text']) ? $this->parameters['search_text'] : '',
 				"search_date_from" => isset($this->parameters['search_date_from']) ? $this->parameters['search_date_from'] : '',
 				"search_date_to"   => isset($this->parameters['search_date_to']) ? $this->parameters['search_date_to'] : ''
