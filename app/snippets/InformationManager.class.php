@@ -56,7 +56,7 @@ class InformationManager extends CommonKanful
 	/**
 	 * リクエストパラメータからWHERE句文字列を組み立てる
 	 */
-	private function _build_search_where()
+	private function _build_info_search_where()
 	{
 		$conditions = array();
 
@@ -68,12 +68,12 @@ class InformationManager extends CommonKanful
 
 		if (!empty($this->parameters['search_date_from'])) {
 			$from = $this->db->escape($this->parameters['search_date_from']);
-			$conditions[] = "info_date >= '" . $from . " 00:00:00'";
+			$conditions[] = "info_date >= '" . $from . "'";
 		}
 
 		if (!empty($this->parameters['search_date_to'])) {
 			$to = $this->db->escape($this->parameters['search_date_to']);
-			$conditions[] = "info_date <= '" . $to . " 23:59:59'";
+			$conditions[] = "info_date < '" . $to . "'::date + interval '1 day'";
 		}
 
 		return empty($conditions) ? "" : implode(" AND ", $conditions);
@@ -94,7 +94,7 @@ class InformationManager extends CommonKanful
 		);
 		$info_data_list = array();
 
-		$where = $this->_build_search_where();
+		$where = $this->_build_info_search_where();
 		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
@@ -171,7 +171,7 @@ class InformationManager extends CommonKanful
 				return;
 			}
 		} else {
-			$result['message'] = "データがありませんでした。";
+			$result['message'] = "該当するお知らせはありませんでした。";
 		}
 
 		foreach ($info_data_list as $key => $data) {
@@ -209,7 +209,7 @@ class InformationManager extends CommonKanful
 	{
 		$info_data_list = array();
 
-		$where = $this->_build_search_where();
+		$where = $this->_build_info_search_where();
 		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
@@ -290,6 +290,8 @@ class InformationManager extends CommonKanful
 					}
 				}
 			}
+		} else {
+			$this->set_message_text('', '該当するお知らせはありませんでした。');
 		}
 
 		// テンプレートから出力内容を生成
