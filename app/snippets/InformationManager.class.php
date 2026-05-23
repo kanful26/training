@@ -66,17 +66,24 @@ class InformationManager extends CommonKanful
 
 		if (!empty($this->parameters['search_text'])) {
 			$kw = $this->db->escape($this->parameters['search_text']);
-			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%')";
+			$kw = str_replace(array('\\', '%', '_'), array('\\\\', '\%', '\_'), $kw);
+			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%') ESCAPE '\\\\'";
 		}
 
 		if (!empty($this->parameters['search_date_from'])) {
-			$from = $this->db->escape($this->parameters['search_date_from']);
-			$conditions[] = "info_date::date >= '" . $from . "'";
+			$raw = $this->parameters['search_date_from'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+				$from = $this->db->escape($raw);
+				$conditions[] = "info_date::date >= '" . $from . "'";
+			}
 		}
 
 		if (!empty($this->parameters['search_date_to'])) {
-			$to = $this->db->escape($this->parameters['search_date_to']);
-			$conditions[] = "info_date::date <= '" . $to . "'";
+			$raw = $this->parameters['search_date_to'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+				$to = $this->db->escape($raw);
+				$conditions[] = "info_date::date <= '" . $to . "'";
+			}
 		}
 
 		return empty($conditions) ? '' : implode(' AND ', $conditions);
@@ -226,6 +233,7 @@ class InformationManager extends CommonKanful
 		if ($total_count > 0) {
 			// ページナビゲーションを作成（検索条件をオプションに含めてページ遷移時にも引き継ぐ）
 			$option = array(
+				"mode"             => "info_list",
 				"sort"             => $this->parameters['sort'],
 				"search_text"      => isset($this->parameters['search_text'])      ? $this->parameters['search_text']      : '',
 				"search_date_from" => isset($this->parameters['search_date_from']) ? $this->parameters['search_date_from'] : '',
