@@ -67,7 +67,7 @@ class InformationManager extends CommonKanful
 		if (!empty($this->parameters['search_text'])) {
 			$kw = $this->db->escape($this->parameters['search_text']);
 			$kw = str_replace(array('!', '%', '_'), array('!!', '!%', '!_'), $kw);
-			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%') ESCAPE '!'";
+			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' ESCAPE '!' OR info_text ILIKE '%" . $kw . "%' ESCAPE '!')";
 		}
 
 		if (!empty($this->parameters['search_date_from'])) {
