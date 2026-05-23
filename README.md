@@ -122,6 +122,8 @@ docker exec harvest-training-web php -l app/snippets/InformationManager.class.ph
 
 研修完了後、参加者の `InformationManager.class.php` の修正を本番ファイル（`keiri/assets/snippets/InformationManager/InformationManager.class.php`）の対応する `info_list_func` / `json_get_info_data_func` に手動で当てる。テンプレート側の変更は本番ではMODxチャンクとして管理されているため、別途反映が必要（指導担当が対応）。
 
+**注意:** `app/test_search_where.php` は動作確認用のデバッグファイルです。`app/` は Apache の DocumentRoot のためブラウザから直接アクセスできます。本番環境には絶対に含めないでください。
+
 ## 課題仕様
 
 `docs/training/2026-04-28-information-search.md` を参照。
