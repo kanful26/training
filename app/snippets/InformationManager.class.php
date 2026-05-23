@@ -53,6 +53,33 @@ class InformationManager extends CommonKanful
 		return $this->result;
 	}
 
+	private function _build_info_search_where()
+	{
+		$conditions = array();
+
+		if (!empty($this->parameters['search_text'])) {
+			$kw = pg_escape_string($this->parameters['search_text']);
+			$kw = str_replace(array('!', '%', '_'), array('!!', '!%', '!_'), $kw);
+			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%' ESCAPE '!')";
+		}
+
+		if (!empty($this->parameters['search_date_from'])) {
+			$from = $this->parameters['search_date_from'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+				$conditions[] = "info_date >= '" . pg_escape_string($from) . "'";
+			}
+		}
+
+		if (!empty($this->parameters['search_date_to'])) {
+			$to = $this->parameters['search_date_to'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+				$conditions[] = "info_date < '" . pg_escape_string($to) . "'::date + interval '1 day'";
+			}
+		}
+
+		return implode(' AND ', $conditions);
+	}
+
 	/**
 	 * JSON形式で社内お知らせデータを取得
 	 */
@@ -68,25 +95,7 @@ class InformationManager extends CommonKanful
 		);
 		$info_data_list = array();
 
-		// Issue #8: 検索フィルタ WHERE 句を構築
-		$where_parts = array();
-
-		if (!empty($this->parameters['search_text'])) {
-			$esc = pg_escape_string($this->parameters['search_text']);
-			$where_parts[] = "(info_subject LIKE '%" . $esc . "%' OR info_text LIKE '%" . $esc . "%')";
-		}
-
-		if (!empty($this->parameters['search_date_from'])) {
-			$esc = pg_escape_string($this->parameters['search_date_from']);
-			$where_parts[] = "info_date >= '" . $esc . "'";
-		}
-
-		if (!empty($this->parameters['search_date_to'])) {
-			$esc = pg_escape_string($this->parameters['search_date_to']);
-			$where_parts[] = "info_date <= '" . $esc . " 23:59:59'";
-		}
-
-		$where = implode(' AND ', $where_parts);
+		$where = $this->_build_info_search_where();
 
 		// Issue #7: get_count にも同じ WHERE 句を渡して正確なページ数を算出
 		$total_count = $this->db->get_count("information", $where);
@@ -203,25 +212,7 @@ class InformationManager extends CommonKanful
 	{
 		$info_data_list = array();
 
-		// Issue #5/#6: 検索フィルタ WHERE 句を構築
-		$where_parts = array();
-
-		if (!empty($this->parameters['search_text'])) {
-			$esc = pg_escape_string($this->parameters['search_text']);
-			$where_parts[] = "(info_subject LIKE '%" . $esc . "%' OR info_text LIKE '%" . $esc . "%')";
-		}
-
-		if (!empty($this->parameters['search_date_from'])) {
-			$esc = pg_escape_string($this->parameters['search_date_from']);
-			$where_parts[] = "info_date >= '" . $esc . "'";
-		}
-
-		if (!empty($this->parameters['search_date_to'])) {
-			$esc = pg_escape_string($this->parameters['search_date_to']);
-			$where_parts[] = "info_date <= '" . $esc . " 23:59:59'";
-		}
-
-		$where = implode(' AND ', $where_parts);
+		$where = $this->_build_info_search_where();
 
 		// Issue #7: get_count にも同じ WHERE 句を渡して正確なページ数を算出
 		$total_count = $this->db->get_count("information", $where);
