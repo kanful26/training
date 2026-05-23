@@ -40,10 +40,10 @@
 			<td class="col-subject">[+info_subject+]</td>
 			<td class="col-text">[+info_text+]</td>
 			<td class="col-user">[+reg_user+]</td>
-			<td class="col-checked"></td>
+			<td class="col-checked">[+checked+]</td>
 		</tr>
 <!-- end -->
-
+[+no_results_msg+]
 	</tbody>
 </table>
 

@@ -53,6 +53,33 @@ class InformationManager extends CommonKanful
 		return $this->result;
 	}
 
+	private function _build_info_search_where()
+	{
+		$conditions = array();
+
+		if (!empty($this->parameters['search_text'])) {
+			$kw = pg_escape_string($this->parameters['search_text']);
+			$kw = str_replace(array('!', '%', '_'), array('!!', '!%', '!_'), $kw);
+			$conditions[] = "(info_subject ILIKE '%" . $kw . "%' OR info_text ILIKE '%" . $kw . "%' ESCAPE '!')";
+		}
+
+		if (!empty($this->parameters['search_date_from'])) {
+			$from = $this->parameters['search_date_from'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+				$conditions[] = "info_date >= '" . pg_escape_string($from) . "'";
+			}
+		}
+
+		if (!empty($this->parameters['search_date_to'])) {
+			$to = $this->parameters['search_date_to'];
+			if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+				$conditions[] = "info_date < '" . pg_escape_string($to) . "'::date + interval '1 day'";
+			}
+		}
+
+		return implode(' AND ', $conditions);
+	}
+
 	/**
 	 * JSON形式で社内お知らせデータを取得
 	 */
@@ -68,7 +95,10 @@ class InformationManager extends CommonKanful
 		);
 		$info_data_list = array();
 
-		$total_count = $this->db->get_count("information");
+		$where = $this->_build_info_search_where();
+
+		// Issue #7: get_count にも同じ WHERE 句を渡して正確なページ数を算出
+		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
 			$this->disp_info_list_by_page = $this->parameters['limit'];
@@ -104,7 +134,7 @@ class InformationManager extends CommonKanful
 						information.upd_timestamp,
 						information.upd_seq
 					",
-					"",
+					$where,
 					"
 						info_date DESC,
 						upd_timestamp DESC,
@@ -182,7 +212,10 @@ class InformationManager extends CommonKanful
 	{
 		$info_data_list = array();
 
-		$total_count = $this->db->get_count("information");
+		$where = $this->_build_info_search_where();
+
+		// Issue #7: get_count にも同じ WHERE 句を渡して正確なページ数を算出
+		$total_count = $this->db->get_count("information", $where);
 
 		if (! empty($this->parameters['limit'])) {
 			$this->disp_info_list_by_page = $this->parameters['limit'];
@@ -192,8 +225,13 @@ class InformationManager extends CommonKanful
 
 		if ($total_count > 0) {
 			// ページナビゲーションを作成
+			// Issue #11: 検索パラメータをページリンクに引き継ぐ
 			$option = array(
-				"sort" => $this->parameters['sort']
+				"mode"             => "info_list",
+				"sort"             => $this->parameters['sort'],
+				"search_text"      => isset($this->parameters['search_text']) ? $this->parameters['search_text'] : '',
+				"search_date_from" => isset($this->parameters['search_date_from']) ? $this->parameters['search_date_from'] : '',
+				"search_date_to"   => isset($this->parameters['search_date_to']) ? $this->parameters['search_date_to'] : '',
 			);
 			$navi_data = $this->make_navigation(
 				$total_count,
@@ -224,7 +262,7 @@ class InformationManager extends CommonKanful
 						information.upd_timestamp,
 						information.upd_seq
 					",
-					"",
+					$where,
 					"
 						info_date DESC,
 						upd_timestamp DESC,
@@ -282,6 +320,9 @@ class InformationManager extends CommonKanful
 				$tpl->AddVar($key, $value);
 			}
 
+			// Issue #9: 既読フラグを表示用文字列に変換
+			$tpl->AddVar("checked", $data['checked'] ? '済' : '');
+
 			$tmp = explode(" ", $data['info_date']);
 			$tpl->AddVar("info_day", $tmp[0]);
 			$tpl->AddVar("info_text", str_replace("\n", "<br />", $data['info_text']));
@@ -316,8 +357,15 @@ class InformationManager extends CommonKanful
 			unset($tpl);
 		}
 
+		// Issue #10: 検索フィルタがあるのに0件の場合にメッセージを表示
+		$no_results_msg = '';
+		if (empty($info_data_list) && !empty($where)) {
+			$no_results_msg = '<tr><td colspan="5" class="no-results">該当するお知らせが見つかりませんでした。</td></tr>';
+		}
+
 		$tpl = new TemplateChunkie('@CODE:' . $template['footer']);
 		$tpl->AddVar("page_navi", $page_navi);
+		$tpl->AddVar("no_results_msg", $no_results_msg);
 		$tpl_ret[] = $tpl->Render();
 		unset($tpl);
 
